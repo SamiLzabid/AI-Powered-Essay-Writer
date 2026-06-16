@@ -16,7 +16,7 @@ Persistent Session Cache: Implements LangGraph’s MemorySaver checkpointer ensu
 
 ## 🔬 Agent Architecture & Workflow
 The system progresses through a highly structured 5-Phase architecture:
-```
+```mermaid
 graph TB
     %% Professional Color Palette & Styling
     classDef default fill:#f8f9fa,stroke:#ced4da,stroke-width:1px,color:#212529;
@@ -78,17 +78,19 @@ graph TB
 - Phase 5: Supplementary Research via Critique Feedback (research_critique) – If the user approves a revision, this node searches the web again exclusively to patch structural gaps found by the critique before sending the data back to Phase 3 for the final revision output.
 
 ## 🛠️ Tech Stack
-Frontend: Streamlit
+- Frontend: Streamlit
 
-Agent Framework: LangGraph & LangChain Core
+- Agent Framework: LangGraph & LangChain Core
 
-LLM Engine: Groq Cloud API (utilizing llama-3.3-70b-versatile)
+- LLM Engine: Groq Cloud API (utilizing llama-3.3-70b-versatile)
 
-Search Engine: Tavily AI
+- Search Engine: Tavily AI
 
 ## Web App SS
 <img width="1881" height="897" alt="image" src="https://github.com/user-attachments/assets/68bac4d9-ebd5-4af8-9ef4-de79bf58dd14" />
+
 <img width="1534" height="693" alt="image" src="https://github.com/user-attachments/assets/9c7b9a7c-b5ce-45f8-ac6f-7c8b1c1ac315" />
+
 <img width="1881" height="898" alt="image" src="https://github.com/user-attachments/assets/f1b50f99-13d2-48b7-a25a-e04beaa9e23d" />
 
 
