@@ -9,16 +9,14 @@ from pydantic import BaseModel
 from tavily import TavilyClient
 from langgraph.checkpoint.memory import MemorySaver
 
-# --- STREAMLIT UI CONFIGURATION ---
+
 st.set_page_config(page_title="AI Automated Essay Writer", layout="wide", page_icon="📝")
 st.title("📝 AI Automated Essay Writer")
 st.markdown("An autonomous agent workflow that plans, researches, drafts, and reflects to write a high-quality essay.")
 
-# --- SIDEBAR CONFIGURATION ---
 st.sidebar.header("Configuration")
 st.sidebar.info("The application allows exactly 1 interactive revision stage based on the teacher's critique feedback.")
 
-# --- SECRETS VALIDATION ---
 if "GROQ_API_KEY" not in st.secrets or "TAVILY_API_KEY" not in st.secrets:
     st.error("⚠️ **Missing API Keys in Secrets!**")
     st.markdown("""
@@ -32,23 +30,19 @@ if "GROQ_API_KEY" not in st.secrets or "TAVILY_API_KEY" not in st.secrets:
     """)
     st.stop()
 
-# Inject secrets directly into environment variables
 os.environ['GROQ_API_KEY'] = st.secrets["GROQ_API_KEY"]
 os.environ['TAVILY_API_KEY'] = st.secrets["TAVILY_API_KEY"]
 
-# --- STREAMLIT SESSION STATE INITIALIZATION ---
 if "history" not in st.session_state:
     st.session_state.history = []  
 if "revision_status" not in st.session_state:
-    st.session_state.revision_status = "none"  # "none", "prompting", "executed", "declined"
+    st.session_state.revision_status = "none" 
 if "graph_active" not in st.session_state:
     st.session_state.graph_active = False  
 if "memory" not in st.session_state:
     st.session_state.memory = MemorySaver()  
 if "current_task" not in st.session_state:
     st.session_state.current_task = ""
-
-# --- DEFINITIONS & AGENT PROMPTS ---
 
 class AgentState(TypedDict):
     task: str
@@ -86,18 +80,11 @@ Generate a list of search queries that will gather any relevant information. Onl
 class Queries(BaseModel):
     queries: List[str]
 
-# --- CONDITIONAL EDGE FUNCTION ---
 def should_continue(state: AgentState):
-    # max_revisions is hardcoded to 2. 
-    # Run 1: revision_number becomes 2 -> 2 > 2 is False -> goes to 'reflect'
-    # Run 2: revision_number becomes 3 -> 3 > 2 is True -> goes to END
     if state.get("revision_number", 1) > state.get("max_revisions", 2):
         return END
     return "reflect"
 
-# --- MAIN APPLICATION LOGIC ---
-
-# Dynamic Bot Greeting based on current workflow status
 with st.chat_message("assistant"):
     if st.session_state.revision_status in ["executed", "declined"]:
         st.write("🔄 We have finalized this essay session! If you would like to generate another essay, please enter a new topic below.")
@@ -106,7 +93,6 @@ with st.chat_message("assistant"):
     else:
         st.write("👋 Hello! I am your AI Essay Writer. What topic would you like me to write an essay about today?")
 
-# Manual user input for the topic
 task = st.text_input("Enter Essay Topic Here:", value="", placeholder="e.g., Nvidia Blackwell AI chip, Quantum Computing, etc.")
 
 if st.button("Generate Essay", type="primary"):
@@ -140,17 +126,14 @@ def render_event(e):
         with st.expander("Phase 5: Supplementary Research via Critique Feedback", expanded=False):
             st.success("Acquired additional target references based on structural gaps.")
 
-# Pre-render historical events so they persist across session refreshes
 for past_event in st.session_state.history:
     render_event(past_event)
 
-# --- EXECUTION LOOP (GRAPH EXECUTION AND INTERRUPTIONS) ---
 if st.session_state.graph_active:
     
     model = ChatGroq(model='llama-3.3-70b-versatile', temperature=0)
     tavily = TavilyClient(api_key=os.environ['TAVILY_API_KEY'])
 
-    # Re-map standard nodes
     def plan_node(state: AgentState):
         messages = [SystemMessage(content=PLAN_PROMPT), HumanMessage(content=state['task'])]
         return {"plan": model.invoke(messages).content}
@@ -200,7 +183,6 @@ if st.session_state.graph_active:
     builder.add_edge('reflect', 'research_critique')
     builder.add_edge('research_critique', 'generate')
 
-    # CHANGED: We now compile the checkpointer to interrupt immediately after 'reflect' (Phase 4)
     graph = builder.compile(checkpointer=st.session_state.memory, interrupt_after=['reflect'])
     thread = {'configurable': {'thread_id': '1'}}
 
@@ -220,11 +202,9 @@ if st.session_state.graph_active:
         for e in events:
             st.session_state.history.append(e)
             render_event(e)
-            
-    # Stop the execution loop from auto-running on layout changes
+
     st.session_state.graph_active = False
     
-    # Update state flags based on what just finished running
     if st.session_state.revision_status == "none":
         st.session_state.revision_status = "prompting"
     else:
@@ -232,10 +212,7 @@ if st.session_state.graph_active:
         
     st.rerun()
 
-# --- HUMAN REVISION INTERACTIVE CONTROLS ---
 if len(st.session_state.history) > 0 and not st.session_state.graph_active:
-    
-    # CASE 1: App is paused right after Phase 4 (Critique) and waiting for user input
     if st.session_state.revision_status == "prompting":
         st.markdown("---")
         st.subheader("🔁 Revision Request")
@@ -252,12 +229,10 @@ if len(st.session_state.history) > 0 and not st.session_state.graph_active:
                 st.success("🎉 Final essay draft locked in successfully!")
                 st.rerun()
                 
-    # CASE 2: The revision cycle has completed (or was declined)
     elif st.session_state.revision_status in ["executed", "declined"]:
         st.markdown("---")
         st.subheader("Final Essay Output")
-        
-        # Find the latest generated draft in our execution history to display cleanly at the bottom
+
         final_draft = ""
         for event in reversed(st.session_state.history):
             if 'generate' in event:
